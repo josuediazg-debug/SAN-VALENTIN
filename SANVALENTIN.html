@@ -1,0 +1,1851 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heart Shooter + Galaxia Interactiva 💫</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css?family=Pacifico" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Marck+Script&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        :root {
+            --primary-red: #e90909;
+            --pink: #ff10f0;
+        }
+
+        * { box-sizing: border-box; }
+
+        /* ESTILOS DEL SHOOTER */
+        @keyframes shootStraight {
+            0% { transform: translate(0, 0) scale(0.3); opacity: 1; }
+            100% { transform: translate(var(--tx), var(--ty)) scale(1); opacity: 1; }
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-15px); }
+            100% { transform: translateY(0); }
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .heart-bullet {
+            animation: shootStraight 1.2s ease-out forwards;
+            position: fixed;
+            z-index: 10;
+        }
+
+        .heart-bullet svg {
+            filter: drop-shadow(0 0 10px rgba(233, 9, 9, 0.7));
+        }
+
+        .particle {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: 50%;
+            animation: float 6s infinite ease-in-out;
+            z-index: 2;
+        }
+
+        body {
+            background: #000000;
+            background-size: 600% 600%;
+            animation: gradientShift 20s ease infinite;
+            overflow: hidden;
+            font-family: "Marck Script", cursive;
+            touch-action: none;
+            color: #fff;
+            margin: 0;
+            height: 100vh;
+        }
+
+        .radial-glow {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center, rgba(255, 255, 255, 0.15) 0%, transparent 80%);
+            z-index: 0;
+        }
+
+        #starsCanvas, #textCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        #starsCanvas { z-index: 1; }
+        #textCanvas { z-index: 20; }
+
+        .container {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 25;
+            transition: opacity 1s ease, visibility 1s ease;
+            width: 320px;
+        }
+
+        .container.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .ico {
+            display: block;
+            position: relative;
+            width: 100%;
+            height: 320px;
+            text-align: center;
+        }
+
+        .ico2 {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .ico:before, .ico:after, .ico2:before, .ico2:after {
+            position: absolute;
+            top: 55%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: block;
+            color: var(--primary-red);
+            content: "\f004";
+            font-family: FontAwesome;
+            font-size: 12em;
+            text-rendering: auto;
+            -webkit-font-smoothing: antialiased;
+            line-height: 1;
+            text-align: center;
+        }
+
+        .ico .title {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 4;
+            font-family: "Pacifico", cursive;
+            color: #fff;
+            cursor: pointer;
+            text-shadow: 2px 4px 3px rgba(0, 0, 0, 0.3);
+            font-size: 30px;
+        }
+
+        .ico:before { z-index: 3; }
+
+        @keyframes explode {
+            0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
+        }
+
+        @keyframes explodeSmall {
+            0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1.2); opacity: 0; }
+        }
+
+        .ico:after { animation: explode 4s infinite; }
+        .ico2:before { animation: explodeSmall 3s infinite; }
+        .ico2:after { animation: explodeSmall 2s infinite; }
+
+        @keyframes open {
+            0% { transform: scale(1); }
+            100% { transform: scale(15); }
+        }
+
+        .open .ico { animation: open 2s forwards; }
+        .open .ico2 { animation: open 2s forwards; }
+        .open .ico .title { opacity: 0; transition: all 0.3s ease; top: -100px; }
+
+        .endtext {
+            opacity: 0;
+            position: absolute;
+            width: 100%;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -30%);
+            padding: 20px;
+            box-sizing: border-box;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        @keyframes show {
+            0% { opacity: 0; top: 200px; }
+            100% { opacity: 1; top: 0; }
+        }
+
+        .open .endtext {
+            top: 0;
+            opacity: 1;
+            animation: show 1s ease-out forwards;
+        }
+
+        .endtext .close {
+            position: absolute;
+            top: 0;
+            right: 20px;
+            cursor: pointer;
+            text-shadow: 2px 4px 3px rgba(0, 0, 0, 0.3);
+            font-size: 24px;
+        }
+
+        .endtext h1, .endtext h2 {
+            text-shadow: 2px 4px 3px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            font-weight: normal;
+            margin: 10px 0;
+        }
+
+        .endtext h1 { font-size: 65px; }
+        .endtext h2 { font-size: 45px; }
+
+        #shooter-gif {
+            width: 240px;
+            height: auto;
+        }
+
+        /* NUEVAS ANIMACIONES DE TRANSICIÓN */
+        @keyframes zoomToInfinity {
+            0% {
+                transform: scale(1) rotate(0deg);
+                opacity: 1;
+                filter: blur(0px);
+            }
+            60% {
+                transform: scale(2.5) rotate(180deg);
+                opacity: 0.7;
+                filter: blur(3px);
+            }
+            100% {
+                transform: scale(8) rotate(360deg);
+                opacity: 0;
+                filter: blur(15px);
+            }
+        }
+
+        @keyframes disperseToCenter {
+            0% {
+                transform: translate(0, 0) scale(1);
+                opacity: 1;
+                filter: blur(0px);
+            }
+            70% {
+                opacity: 0.5;
+                filter: blur(5px);
+            }
+            100% {
+                transform: translate(var(--center-x), var(--center-y)) scale(0);
+                opacity: 0;
+                filter: blur(10px);
+            }
+        }
+
+        @keyframes fadeBlurOut {
+            0% {
+                opacity: 1;
+                filter: blur(0px) brightness(1);
+            }
+            50% {
+                filter: blur(8px) brightness(1.3);
+            }
+            100% {
+                opacity: 0;
+                filter: blur(20px) brightness(0.5);
+            }
+        }
+
+        @keyframes galaxyZoomIn {
+            0% {
+                opacity: 0;
+                transform: scale(0.3) rotate(-10deg);
+                filter: blur(20px) brightness(2);
+            }
+            60% {
+                filter: blur(5px) brightness(1.5);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) rotate(0deg);
+                filter: blur(0px) brightness(1);
+            }
+        }
+
+        .transition-zoom {
+            animation: zoomToInfinity 4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards !important;
+        }
+
+        .transition-disperse {
+            animation: disperseToCenter 4s cubic-bezier(0.36, 0, 0.66, -0.56) forwards !important;
+        }
+
+        .transition-fade-blur {
+            animation: fadeBlurOut 4s ease-out forwards !important;
+        }
+
+        /* ESTILOS DE LA GALAXIA */
+        #galaxy-canvas {
+            position: fixed;
+            inset: 0;
+            display: none;
+            z-index: 50;
+            opacity: 0;
+        }
+
+        #galaxy-canvas.visible {
+            display: block;
+            animation: galaxyZoomIn 4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        .top-ui {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            text-align: center;
+            opacity: 0;
+            transition: opacity 1s ease 3s;
+        }
+
+        .top-ui.visible {
+            opacity: 1;
+        }
+
+        .title-pill {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255,255,255,0.18);
+            color: white;
+            padding: 12px 30px;
+            border-radius: 30px;
+            font-size: 16px;
+            backdrop-filter: blur(6px);
+            box-shadow: 0 4px 20px rgba(255, 16, 240, 0.3);
+        }
+
+        .photo-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 500;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(10px);
+            animation: fadeIn 0.3s ease;
+        }
+
+        .photo-modal.active {
+            display: flex;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .photo-content {
+            position: relative;
+            max-width: 90%;
+            max-height: 90%;
+            animation: scaleIn 0.4s ease;
+        }
+
+        @keyframes scaleIn {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .photo-content img {
+            max-width: 100%;
+            max-height: 80vh;
+            border-radius: 20px;
+            box-shadow: 0 0 50px rgba(255, 16, 240, 0.5);
+            border: 3px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .photo-caption {
+            position: absolute;
+            bottom: -60px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 15px 30px;
+            border-radius: 20px;
+            color: white;
+            font-size: 18px;
+            text-align: center;
+            white-space: nowrap;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .close-modal {
+            position: absolute;
+            top: -50px;
+            right: 0;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 24px;
+            backdrop-filter: blur(5px);
+        }
+
+        .close-modal:hover {
+            background: rgba(255, 16, 240, 0.3);
+        }
+
+        .minimap {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 150px;
+            height: 150px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid rgba(255, 16, 240, 0.5);
+            border-radius: 50%;
+            z-index: 100;
+            overflow: hidden;
+            backdrop-filter: blur(5px);
+            opacity: 0;
+            transition: opacity 1s ease 3s;
+        }
+
+        .minimap.visible {
+            opacity: 1;
+        }
+
+        .minimap canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .photo-counter {
+            position: fixed;
+            top: 80px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(5px);
+            font-size: 14px;
+            z-index: 100;
+            opacity: 0;
+            transition: opacity 1s ease 3s;
+        }
+
+        .photo-counter.visible {
+            opacity: 1;
+        }
+
+        #fx {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        .photo-tooltip {
+            position: fixed;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 10px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 200;
+            display: none;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        /* Pregunta de San Valentín */
+        #proposal-ui {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 500;
+            text-align: center;
+            opacity: 0;
+            transition: opacity 2s ease 6s;
+            pointer-events: none;
+            width: 90%;
+            max-width: 420px;
+        }
+
+        #proposal-ui.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* Overlay negro para la carta */
+        #love-letter-overlay {
+            position: fixed;
+            inset: 0;
+            background: #000000;
+            z-index: 1000;
+            display: none;
+            opacity: 0;
+            transition: opacity 1s ease;
+        }
+
+        #love-letter-overlay.active {
+            display: block;
+            opacity: 1;
+        }
+
+        #love-letter-overlay.fade-out-overlay {
+            opacity: 0;
+        }
+
+        /* Carta romántica */
+        .love-letter {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            width: 90%;
+            max-width: 600px;
+            background: linear-gradient(135deg, #fff5f7 0%, #ffe8f0 100%);
+            border: 3px solid #ff10f0;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 0 60px rgba(255, 16, 240, 0.6), 0 0 100px rgba(255, 16, 240, 0.4);
+            z-index: 1001;
+            opacity: 0;
+            transition: opacity 1s ease;
+        }
+
+        .love-letter.show {
+            animation: cardZoomIn 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards,
+                       cardFloat 3s ease-in-out 1.2s infinite;
+        }
+
+        @keyframes cardZoomIn {
+            0% { 
+                transform: translate(-50%, -50%) scale(0) rotate(-5deg);
+                opacity: 0;
+            }
+            70% {
+                transform: translate(-50%, -50%) scale(1.08) rotate(2deg);
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(1) rotate(0deg);
+                opacity: 1;
+            }
+        }
+
+        @keyframes cardFloat {
+            0%, 100% { 
+                transform: translate(-50%, -50%) translateY(0) rotate(0deg);
+            }
+            50% { 
+                transform: translate(-50%, -50%) translateY(-15px) rotate(1deg);
+            }
+        }
+
+        .love-letter-header {
+            text-align: center;
+            margin-bottom: 30px;
+            font-family: 'Pacifico', cursive;
+            color: #ff10f0;
+            font-size: clamp(28px, 5vw, 42px);
+            text-shadow: 2px 2px 4px rgba(255, 16, 240, 0.3);
+        }
+
+        .love-letter-content {
+            font-family: 'Marck Script', cursive;
+            font-size: clamp(18px, 3vw, 24px);
+            line-height: 1.8;
+            color: #4a0028;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .love-letter-footer {
+            text-align: center;
+            margin-top: 30px;
+            font-family: 'Pacifico', cursive;
+            color: #ff10f0;
+            font-size: clamp(20px, 3.5vw, 28px);
+        }
+
+        .heart-decoration {
+            font-size: 40px;
+            display: inline-block;
+            animation: heartBeat 1.5s ease-in-out infinite;
+        }
+
+        @keyframes heartBeat {
+            0%, 100% { transform: scale(1); }
+            10%, 30% { transform: scale(0.9); }
+            20%, 40% { transform: scale(1.1); }
+        }
+
+        /* Partícula de transición */
+        .transition-particle {
+            position: fixed;
+            width: 4px;
+            height: 4px;
+            background: rgba(255, 16, 240, 0.8);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 100;
+            box-shadow: 0 0 10px rgba(255, 16, 240, 0.6);
+        }
+
+        @media (max-width: 768px) {
+            .container { width: 120px; }
+            .ico { height: 155px; }
+            .ico .title { font-size: 13px; }
+            .ico:before, .ico:after, .ico2:before, .ico2:after { font-size: 4em; }
+            .endtext h1 { font-size: 32px; }
+            .endtext h2 { font-size: 20px; }
+            #shooter-gif { width: 80px !important; }
+            .title-pill { font-size: 12px; padding: 8px 20px; }
+            .photo-counter { left: 10px; top: 70px; font-size: 12px; padding: 10px 15px; }
+            .minimap { width: 100px; height: 100px; bottom: 20px; right: 10px; }
+            .photo-caption { font-size: 14px; padding: 10px 20px; }
+            
+            .love-letter {
+                padding: 25px;
+                max-width: 95%;
+            }
+            
+            .love-letter-header {
+                font-size: 24px;
+                margin-bottom: 20px;
+            }
+            
+            .love-letter-content {
+                font-size: 16px;
+                line-height: 1.6;
+            }
+            
+            .love-letter-content p {
+                margin: 12px 0;
+            }
+            
+            .love-letter-footer {
+                font-size: 18px;
+                margin-top: 20px;
+            }
+            
+            .heart-decoration {
+                font-size: 28px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- FASE 1: SHOOTER -->
+    <div class="radial-glow"></div>
+    <canvas id="starsCanvas"></canvas>
+    <div id="particles"></div>
+    <canvas id="textCanvas"></canvas>
+
+    <div class="container hidden">
+        <span class="ico">
+            <span class="ico2"></span>
+            <span class="title">Click Aquí</span>
+        </span>
+        <div class="endtext">
+            <span class="close" title="Restart"><i class="fa fa-times"></i></span>
+            <h1>Te amo, amorcito bonita Ani</h1>
+            <h2>Eres la razón de mi felicidad... me hiciste sentir tan seguro a tu lado... te quiero conmigo toda la vidaaaaa</h2>
+        </div>
+    </div>
+
+    <div class="absolute left-20 top-1/3">
+        <div id="loading" class="flex items-center justify-center">
+            <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-white"></div>
+        </div>
+        <img id="shooter-gif" src="shooter-01.gif" style="display: none;" alt="Shooter"/>
+    </div>
+
+    <!-- FASE 2: GALAXIA -->
+    <canvas id="galaxy-canvas"></canvas>
+
+    <div class="top-ui">
+        <div class="title-pill">💫 Nuestra Galaxia de Recuerdos 💛</div>
+    </div>
+
+    <div class="photo-counter">
+        <div style="font-size: 18px; margin-bottom: 5px;">📸 <span id="photo-count">0</span></div>
+        <div style="font-size: 11px; opacity: 0.7;">Click en las fotos</div>
+    </div>
+
+    <div class="minimap">
+        <canvas id="minimap-canvas"></canvas>
+    </div>
+
+    <div class="photo-modal" id="photoModal">
+        <div class="photo-content">
+            <button class="close-modal" onclick="closePhotoModal()">×</button>
+            <img id="modalImage" src="" alt="Recuerdo">
+            <div class="photo-caption" id="modalCaption">Nuestro recuerdo especial 💛</div>
+        </div>
+    </div>
+
+    <div class="photo-tooltip" id="photoTooltip">Click para ver</div>
+
+    <!-- Pregunta de San Valentín -->
+    <div id="proposal-ui">
+        <div style="background: rgba(15, 0, 25, 0.8); backdrop-filter: blur(15px); border: 1px solid var(--pink); border-radius: 30px; padding: 25px;">
+            <h2 style="color:white; margin:0 0 15px 0; font-size: 28px;">¿Quieres ser mi San Valentín? ❤️</h2>
+            <button class="ans-btn" onclick="sayYes()" style="padding: 12px 30px; border-radius: 20px; border: 1px solid white; background: none; color: white; cursor: pointer; font-weight: bold; margin: 5px; font-size: 16px; transition: all 0.3s;">SÍ 💖</button>
+            <button class="ans-btn" onclick="sayYes()" style="padding: 12px 30px; border-radius: 20px; border: 1px solid white; background: none; color: white; cursor: pointer; font-weight: bold; margin: 5px; font-size: 16px; transition: all 0.3s;">OBVIO 💛</button>
+        </div>
+    </div>
+
+    <!-- Overlay negro con carta romántica -->
+    <div id="love-letter-overlay">
+        <div class="love-letter" id="loveLetter">
+            <div class="love-letter-header">
+                <span class="heart-decoration">💕</span>
+                Para mi San Valentín
+                <span class="heart-decoration">💕</span>
+            </div>
+            
+            <div class="love-letter-content">
+                <p>Sabía que dirías que sí, porque eres la persona más especial de mi vida. 💛</p>
+                <p>Cada día a tu lado es un regalo, cada sonrisa tuya ilumina mi mundo.</p>
+                <p>Gracias por existir, por amarme, por ser mi todo.</p>
+                <p>Este San Valentín y todos los que vengan, quiero pasarlos contigo . ✨</p>
+                <p>No importa que estemos lejos, siempre estaremos unidos con nuestros corazones . </p>
+                <p><strong>Te amo infinitamente, amorcito bonita. ♾️💖</strong></p>
+            </div>
+            
+            <div class="love-letter-footer">
+                Con todo mi amor 💛
+                <br>
+                <span style="font-size: 0.8em; opacity: 0.9;">Tu amorcito JOSUE 💕</span>
+            </div>
+        </div>
+    </div>
+
+    <canvas id="fx"></canvas>
+
+    <audio id="shootSound" src="https://www.soundjay.com/button/sounds/button-16.mp3" preload="auto"></audio>
+    <audio id="heartSound" src="https://www.soundjay.com/button/sounds/button-9.mp3" preload="auto"></audio>
+
+    <script>
+        // ====== CONFIGURACIÓN DE FOTOS ======
+        const fotosConRecuerdos = [
+            { src: 'foto1.jpg', caption: 'Nuestros inicios amorcito bonita 💕', date: '2024' },
+            { src: 'foto2.jpg', caption: '1er año nuevo juntitos 💛', date: '2024' },
+            { src: 'foto3.jpg', caption: 'Nuestro primer mes 🌟', date: '2025' },
+            { src: 'foto4.jpg', caption: 'Nuestro 1er San Valentin juntitos 💖', date: '2025' },
+            { src: 'foto5.jpg', caption: 'El dia de nuestra bodita ♾️', date: '2025' },
+            { src: 'foto6.jpg', caption: 'Mi persona favorita 🥰', date: '2025' },
+            { src: 'foto7.jpg', caption: 'Contigo todo es mejor 💫', date: '2025' },
+            { src: 'foto8.jpg', caption: 'Te amo infinitamente 1er aniversario 💛', date: '2025' },
+            { src: 'foto9.jpg', caption: '2do año nuevo juntitos💛', date: '2025' }
+        ];
+
+        // Variables globales
+        let scene, camera, renderer, controls, heartParticles, galaxy;
+        let photoMeshes = [];
+        let isAccepted = false;
+        let raycaster, mouse;
+        let galaxyInitialized = false;
+        let heartRainInterval = null;
+        let fireworksParticles = [];
+
+        // ====== FASE 1: SHOOTER ======
+        const starsCanvas = document.getElementById('starsCanvas');
+        const starsCtx = starsCanvas.getContext('2d');
+        starsCanvas.width = window.innerWidth;
+        starsCanvas.height = window.innerHeight;
+
+        const stars = [];
+        for (let i = 0; i < 80; i++) {
+            stars.push({
+                x: Math.random() * starsCanvas.width,
+                y: Math.random() * starsCanvas.height,
+                radius: Math.random() * 1.5 + 0.5,
+                opacity: Math.random() * 0.3 + 0.1,
+                twinkleSpeed: Math.random() * 0.015 + 0.005
+            });
+        }
+
+        function drawStars() {
+            starsCtx.clearRect(0, 0, starsCanvas.width, starsCanvas.height);
+            stars.forEach(star => {
+                starsCtx.beginPath();
+                starsCtx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+                starsCtx.fillStyle = `rgba(255, 255, 255, ${star.opacity})`;
+                starsCtx.fill();
+                star.opacity += star.twinkleSpeed;
+                if (star.opacity >= 0.4 || star.opacity <= 0.1) star.twinkleSpeed *= -1;
+            });
+            requestAnimationFrame(drawStars);
+        }
+        drawStars();
+
+        const particlesContainer = document.getElementById('particles');
+        for (let i = 0; i < 15; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            particle.style.left = Math.random() * window.innerWidth + 'px';
+            particle.style.top = Math.random() * window.innerHeight + 'px';
+            particle.style.animationDelay = Math.random() * 6 + 's';
+            particlesContainer.appendChild(particle);
+        }
+
+        const textCanvas = document.getElementById('textCanvas');
+        const textCtx = textCanvas.getContext('2d');
+        textCanvas.width = window.innerWidth;
+        textCanvas.height = window.innerHeight;
+
+        const textParticles = [];
+        let textAnimationStarted = false;
+
+        function initTextParticles() {
+            const text = "Te amaré y cuidaré siempre  ❤️";
+            let fontSize = window.innerWidth <= 640 ? 70 : 90;
+            
+            textCtx.font = `bold ${fontSize}px Arial`;
+            textCtx.textAlign = 'center';
+            textCtx.textBaseline = 'middle';
+
+            const startY = window.innerWidth <= 640 ? window.innerHeight * 0.6 : window.innerHeight * 0.8;
+            
+            const container = document.querySelector('.container');
+            const containerHeight = window.innerWidth <= 640 ? 120 : 320;
+            container.style.top = `${startY - containerHeight - 28}px`;
+
+            textCtx.fillStyle = 'white';
+            textCtx.fillText(text, window.innerWidth / 2, startY);
+
+            const imageData = textCtx.getImageData(0, 0, textCanvas.width, textCanvas.height);
+            textCtx.clearRect(0, 0, textCanvas.width, textCanvas.height);
+
+            textParticles.length = 0;
+            const step = window.innerWidth <= 640 ? 1 : 2;
+
+            for (let y = 0; y < textCanvas.height; y += step) {
+                for (let x = 0; x < textCanvas.width; x += step) {
+                    if (imageData.data[(y * textCanvas.width + x) * 4 + 3] > 128) {
+                        textParticles.push({
+                            x: Math.random() * textCanvas.width,
+                            y: Math.random() * textCanvas.height,
+                            targetX: x,
+                            targetY: y,
+                            speed: 0.03 + Math.random() * 0.04,
+                            opacity: 0,
+                            size: window.innerWidth <= 640 ? Math.random() * 0.2 + 0.5 : Math.random() * 1.5 + 1
+                        });
+                    }
+                }
+            }
+        }
+
+        function animateTextParticles() {
+            if (!textAnimationStarted) return;
+            
+            textCtx.clearRect(0, 0, textCanvas.width, textCanvas.height);
+            
+            let allParticlesInPlace = true;
+            
+            textParticles.forEach(p => {
+                const dx = p.targetX - p.x;
+                const dy = p.targetY - p.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance > 1) {
+                    allParticlesInPlace = false;
+                    p.x += dx * p.speed;
+                    p.y += dy * p.speed;
+                } else {
+                    p.x = p.targetX;
+                    p.y = p.targetY;
+                }
+                
+                p.opacity = Math.min(p.opacity + 2.03, 1);
+
+                textCtx.beginPath();
+                textCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                textCtx.fillStyle = '#e90909';
+                textCtx.shadowBlur = 15;
+                textCtx.fill();
+            });
+
+            if (!allParticlesInPlace) {
+                requestAnimationFrame(animateTextParticles);
+            }
+        }
+
+        const shooter = document.getElementById('shooter-gif');
+        const loading = document.getElementById('loading');
+        let centerX = window.innerWidth <= 640 ? window.innerWidth * 0.7 : window.innerWidth * 0.8;
+        let centerY = window.innerWidth <= 640 ? window.innerHeight * 0.25 : window.innerHeight * 0.4;
+        const heartPositions = [];
+        let currentShot = 0;
+
+        function updateHeartPositions() {
+            heartPositions.length = 0;
+            const scale = window.innerWidth <= 640 ? 60 : 150;
+            
+            for (let t = 0; t <= 2 * Math.PI; t += 0.1) {
+                const x = 16 * Math.pow(Math.sin(t), 3) * scale / 16;
+                const y = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)) * scale / 16;
+                
+                heartPositions.push({
+                    x: centerX + x,
+                    y: centerY + y
+                });
+            }
+        }
+
+        function shootHeart() {
+            if (currentShot >= heartPositions.length) return;
+
+            const shooterRect = shooter.getBoundingClientRect();
+            const startX = shooterRect.right - 10;
+            const startY = shooterRect.top + shooterRect.height / 2;
+
+            const target = heartPositions[currentShot];
+            const heart = document.createElement('div');
+            heart.className = 'heart-bullet';
+            heart.style.left = startX + 'px';
+            heart.style.top = startY + 'px';
+            
+            const heartSize = window.innerWidth <= 640 ? 15 : 40;
+            heart.innerHTML = `
+                <svg width="${heartSize}" height="${heartSize}" viewBox="0 0 24 24">
+                    <path fill="var(--primary-red)" d="M12 4.419c-2.826-5.695-11.999-4.064-11.999 3.27 0 7.27 9.594 11.222 12 15.616 2.406-4.394 12-8.346 12-15.616 0-7.334-9.17-8.972-12-3.27z"/>
+                </svg>
+            `;
+
+            const deltaX = target.x - startX;
+            const deltaY = target.y - startY;
+            heart.style.setProperty('--tx', deltaX + 'px');
+            heart.style.setProperty('--ty', deltaY + 'px');
+
+            document.body.appendChild(heart);
+            
+            try {
+                document.getElementById('shootSound').play().catch(() => {});
+            } catch(e) {}
+
+            if (currentShot === heartPositions.length - 1) {
+                shooter.src = 'shooter-02.gif';
+                
+                try {
+                    document.getElementById('heartSound').play().catch(() => {});
+                } catch(e) {}
+                
+                setTimeout(() => {
+                    textAnimationStarted = true;
+                    document.querySelector('.container').classList.remove('hidden');
+                    animateTextParticles();
+                }, 500);
+            }
+
+            currentShot++;
+        }
+
+        function startShooting() {
+            const interval = setInterval(() => {
+                if (currentShot >= heartPositions.length) {
+                    clearInterval(interval);
+                    return;
+                }
+                shootHeart();
+            }, 120);
+        }
+
+        updateHeartPositions();
+        initTextParticles();
+
+        shooter.onload = function () {
+            loading.style.display = 'none';
+            shooter.style.display = 'block';
+            startShooting();
+        };
+
+        if (shooter.complete) {
+            loading.style.display = 'none';
+            shooter.style.display = 'block';
+            startShooting();
+        }
+
+        // ====== TRANSICIÓN MEJORADA A GALAXIA ======
+        $(document).ready(function () {
+            $(".title").click(function () {
+                $(".container").addClass("open");
+                
+                setTimeout(() => {
+                    transitionToGalaxy();
+                }, 2000);
+            });
+            
+            $(".close").click(function () {
+                $(".container").removeClass("open");
+            });
+        });
+
+        function createTransitionParticles() {
+            const centerScreenX = window.innerWidth / 2;
+            const centerScreenY = window.innerHeight / 2;
+            
+            // Crear 200 partículas que vuelan hacia el centro
+            for (let i = 0; i < 200; i++) {
+                setTimeout(() => {
+                    const particle = document.createElement('div');
+                    particle.className = 'transition-particle';
+                    
+                    // Posición aleatoria en la pantalla
+                    const startX = Math.random() * window.innerWidth;
+                    const startY = Math.random() * window.innerHeight;
+                    
+                    particle.style.left = startX + 'px';
+                    particle.style.top = startY + 'px';
+                    
+                    // Calcular dirección hacia el centro
+                    const deltaX = centerScreenX - startX;
+                    const deltaY = centerScreenY - startY;
+                    
+                    particle.style.setProperty('--center-x', deltaX + 'px');
+                    particle.style.setProperty('--center-y', deltaY + 'px');
+                    
+                    particle.classList.add('transition-disperse');
+                    
+                    document.body.appendChild(particle);
+                    
+                    // Remover después de la animación
+                    setTimeout(() => {
+                        particle.remove();
+                    }, 4000);
+                }, i * 15); // Escalonar la aparición
+            }
+        }
+
+        function transitionToGalaxy() {
+            // Crear partículas de transición
+            createTransitionParticles();
+            
+            // Aplicar animaciones mejoradas a elementos existentes
+            document.querySelector('.container').classList.add('transition-zoom');
+            document.getElementById('shooter-gif').parentElement.classList.add('transition-fade-blur');
+            
+            // Animar corazones con dispersión
+            const heartBullets = document.querySelectorAll('.heart-bullet');
+            heartBullets.forEach((heart, index) => {
+                const rect = heart.getBoundingClientRect();
+                const centerX = window.innerWidth / 2 - rect.left - rect.width / 2;
+                const centerY = window.innerHeight / 2 - rect.top - rect.height / 2;
+                
+                heart.style.setProperty('--center-x', centerX + 'px');
+                heart.style.setProperty('--center-y', centerY + 'px');
+                
+                setTimeout(() => {
+                    heart.classList.add('transition-disperse');
+                }, index * 30);
+            });
+            
+            // Fade blur para elementos de fondo
+            setTimeout(() => {
+                document.getElementById('starsCanvas').classList.add('transition-fade-blur');
+                document.getElementById('textCanvas').classList.add('transition-fade-blur');
+                document.getElementById('particles').classList.add('transition-fade-blur');
+                document.querySelector('.radial-glow').classList.add('transition-fade-blur');
+            }, 500);
+
+            // Inicializar galaxia después de 4 segundos (sincronizado con la transición)
+            setTimeout(() => {
+                if (!galaxyInitialized) {
+                    initGalaxy();
+                    galaxyInitialized = true;
+                }
+                
+                // Mostrar galaxia con animación cinematográfica
+                document.getElementById('galaxy-canvas').classList.add('visible');
+                
+                // Los demás elementos aparecen gradualmente después
+                setTimeout(() => {
+                    document.querySelector('.top-ui').classList.add('visible');
+                    document.querySelector('.photo-counter').classList.add('visible');
+                    document.querySelector('.minimap').classList.add('visible');
+                }, 1000);
+
+                // Mostrar pregunta de San Valentín después de 6 segundos totales
+                setTimeout(() => {
+                    document.getElementById('proposal-ui').classList.add('visible');
+                }, 2000);
+            }, 4000);
+        }
+
+        function sayYes() {
+            isAccepted = true;
+            const proposalUI = document.getElementById('proposal-ui');
+            proposalUI.classList.remove('visible');
+            
+            // Ocultar la galaxia gradualmente
+            document.getElementById('galaxy-canvas').style.transition = 'opacity 1s ease';
+            document.getElementById('galaxy-canvas').style.opacity = '0';
+            document.querySelector('.top-ui').style.opacity = '0';
+            document.querySelector('.photo-counter').style.opacity = '0';
+            document.querySelector('.minimap').style.opacity = '0';
+            
+            // Mostrar overlay negro y carta después de 1 segundo
+            setTimeout(() => {
+                const overlay = document.getElementById('love-letter-overlay');
+                const letter = document.getElementById('loveLetter');
+                
+                overlay.classList.add('active');
+                
+                setTimeout(() => {
+                    letter.classList.add('show');
+                }, 100);
+                
+                // Explosión inicial de corazones 2D
+                spawnHearts(window.innerWidth/2, window.innerHeight/2, 150);
+                
+                // Fuegos artificiales 3D de corazones
+                launchFireworks();
+                
+                // Lluvia continua de corazones 2D
+                if (heartRainInterval) {
+                    clearInterval(heartRainInterval);
+                }
+                
+                heartRainInterval = setInterval(() => {
+                    for (let i = 0; i < 8; i++) {
+                        spawnHearts(
+                            Math.random() * window.innerWidth,
+                            -20,
+                            2
+                        );
+                    }
+                }, 150);
+                
+                // Después de 15 segundos, ocultar carta y volver a la galaxia
+                setTimeout(() => {
+                    // Detener lluvia de corazones
+                    clearInterval(heartRainInterval);
+                    
+                    // Fade out de la carta y overlay
+                    letter.style.transition = 'opacity 1.5s ease, transform 1.5s ease';
+                    letter.style.opacity = '0';
+                    letter.style.transform = 'translate(-50%, -50%) scale(0.8)';
+                    
+                    overlay.classList.add('fade-out-overlay');
+                    
+                    // Después de 1.5 segundos, mostrar galaxia nuevamente
+                    setTimeout(() => {
+                        overlay.classList.remove('active');
+                        overlay.classList.remove('fade-out-overlay');
+                        letter.classList.remove('show');
+                        letter.style.opacity = '';
+                        letter.style.transform = '';
+                        
+                        // Volver a mostrar la galaxia
+                        document.getElementById('galaxy-canvas').style.opacity = '1';
+                        document.querySelector('.top-ui').style.opacity = '1';
+                        document.querySelector('.photo-counter').style.opacity = '1';
+                        document.querySelector('.minimap').style.opacity = '1';
+                    }, 1500);
+                }, 15000);
+            }, 1000);
+        }
+
+        // ====== FUEGOS ARTIFICIALES 3D ======
+        function launchFireworks() {
+            // Lanzar 8 fuegos artificiales desde diferentes posiciones
+            for (let i = 0; i < 8; i++) {
+                setTimeout(() => {
+                    createFirework();
+                }, i * 400);
+            }
+        }
+
+        function createFirework() {
+            const colors = [0xff10f0, 0xff69b4, 0xffc0cb, 0xff1493, 0xff00ff];
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            
+            // Posición de explosión aleatoria
+            const explosionPos = new THREE.Vector3(
+                (Math.random() - 0.5) * 150,
+                Math.random() * 80 + 40,
+                (Math.random() - 0.5) * 150
+            );
+            
+            // Crear partículas de corazón
+            const particleCount = 100;
+            
+            for (let i = 0; i < particleCount; i++) {
+                // Crear geometría de corazón
+                const heartShape = new THREE.Shape();
+                const x = 0, y = 0;
+                heartShape.moveTo(x + 0.5, y + 0.5);
+                heartShape.bezierCurveTo(x + 0.5, y + 0.5, x + 0.4, y, x, y);
+                heartShape.bezierCurveTo(x - 0.6, y, x - 0.6, y + 0.7, x - 0.6, y + 0.7);
+                heartShape.bezierCurveTo(x - 0.6, y + 1.1, x - 0.3, y + 1.54, x + 0.5, y + 1.9);
+                heartShape.bezierCurveTo(x + 1.2, y + 1.54, x + 1.6, y + 1.1, x + 1.6, y + 0.7);
+                heartShape.bezierCurveTo(x + 1.6, y + 0.7, x + 1.6, y, x + 1, y);
+                heartShape.bezierCurveTo(x + 0.7, y, x + 0.5, y + 0.5, x + 0.5, y + 0.5);
+                
+                const geometry = new THREE.ShapeGeometry(heartShape);
+                const material = new THREE.MeshBasicMaterial({
+                    color: color,
+                    transparent: true,
+                    opacity: 1,
+                    side: THREE.DoubleSide
+                });
+                
+                const heart = new THREE.Mesh(geometry, material);
+                heart.scale.set(2, 2, 2);
+                heart.position.copy(explosionPos);
+                
+                // Velocidad aleatoria en todas direcciones
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.random() * Math.PI;
+                const speed = 15 + Math.random() * 25;
+                
+                heart.userData.velocity = new THREE.Vector3(
+                    Math.sin(phi) * Math.cos(theta) * speed,
+                    Math.sin(phi) * Math.sin(theta) * speed,
+                    Math.cos(phi) * speed
+                );
+                
+                heart.userData.life = 1.0;
+                heart.userData.gravity = -40;
+                
+                scene.add(heart);
+                fireworksParticles.push(heart);
+            }
+        }
+
+        // ====== FASE 2: GALAXIA CON ESTILO MEJORADO ======
+        function initGalaxy() {
+            const canvas = document.getElementById('galaxy-canvas');
+            
+            renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
+            renderer.outputEncoding = THREE.sRGBEncoding;
+
+            scene = new THREE.Scene();
+
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
+            
+            // Posición de cámara mejorada según tamaño de pantalla
+            const isMobile = window.innerWidth < 768 || window.innerWidth < window.innerHeight;
+            camera.fov = isMobile ? 90 : 75;
+            camera.position.set(0, isMobile ? 26 : 22, isMobile ? 110 : 75);
+            camera.updateProjectionMatrix();
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.06;
+            controls.minDistance = 10;
+            controls.maxDistance = 220;
+            controls.target.set(0, 0, 0);
+
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+
+            createPrettyStarfield();
+            createGalaxy();
+            createGalaxyCore();
+            createCenterHeart();
+            createPhotos();
+            initMinimap();
+
+            canvas.addEventListener('click', onCanvasClick);
+            canvas.addEventListener('mousemove', onMouseMove);
+
+            document.getElementById('photo-count').textContent = fotosConRecuerdos.length;
+
+            animateGalaxy();
+        }
+
+        function createPrettyStarfield() {
+            // Fondo de estrellas mejorado con textura más bonita
+            function makePrettyStarTexture(size = 1024, count = 2600) {
+                const c = document.createElement('canvas');
+                c.width = c.height = size;
+                const g = c.getContext('2d');
+                
+                // Fondo nebulosa sutil (púrpura oscuro radial)
+                const r = size / 2;
+                const bg = g.createRadialGradient(r, r, r * 0.2, r, r, r);
+                bg.addColorStop(0, '#050010');
+                bg.addColorStop(1, '#000000');
+                g.fillStyle = bg;
+                g.fillRect(0, 0, size, size);
+
+                for (let i = 0; i < count; i++) {
+                    const x = Math.random() * size;
+                    const y = Math.random() * size;
+                    const base = Math.random() * 0.7 + 0.3;
+                    const glow = g.createRadialGradient(x, y, 0, x, y, Math.random() * 2.2 + 1.6);
+                    
+                    const huePick = Math.random();
+                    let colInner = `rgba(255,255,255,${0.65 * base})`;
+                    let colOuter = `rgba(180,190,255,${0.12 * base})`;
+                    if (huePick < 0.25) {
+                        colOuter = `rgba(255,180,240,${0.12 * base})`;
+                    }
+                    
+                    glow.addColorStop(0, colInner);
+                    glow.addColorStop(1, colOuter);
+                    g.fillStyle = glow;
+                    g.beginPath();
+                    g.arc(x, y, Math.random() * 1.2 + 0.6, 0, Math.PI * 2);
+                    g.fill();
+                }
+                
+                return new THREE.CanvasTexture(c);
+            }
+
+            const bgGeo = new THREE.SphereGeometry(600, 64, 64);
+            const starTex = makePrettyStarTexture(1024, 2600);
+            starTex.wrapS = starTex.wrapT = THREE.RepeatWrapping;
+            const bg = new THREE.Mesh(bgGeo, new THREE.MeshBasicMaterial({
+                map: starTex,
+                side: THREE.BackSide,
+                transparent: false,
+                opacity: 0.85
+            }));
+            scene.add(bg);
+            scene.userData.starfieldMesh = bg;
+            scene.userData.starTexture = starTex;
+        }
+
+        function createGalaxy() {
+            galaxy = new THREE.Group();
+            scene.add(galaxy);
+
+            const phrases = [
+                "Amorcito bonita ✨", "Hermosa 💛", "Preciosa", "Ani My Love 🌌",
+                "Hermosota ✨", "Mi Infinita ♾️", "Mi Todo", "Me Encantas 🥰",
+                "Ani bella 💫", "Te Amo💛", "Mi Canción Favorita 🎶", "Única 😊",
+                "Mi Reina 👑", "Mi Amor", "Mi Mundo", "Mi Luz 🌠", "Mi Niña bonita",
+                "Mi amorcito💛", "Mi Paz", "Mi Eterna", "Mi Sueño", "Mi Felicidad"
+            ];
+
+            function createLabel(text) {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = 1024;
+                canvas.height = 128;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.font = '800 48px -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.shadowColor = 'rgba(210,140,255,0.95)';
+                ctx.shadowBlur = 24;
+                ctx.fillStyle = 'rgba(255,240,255,0.98)';
+                ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+                
+                const texture = new THREE.CanvasTexture(canvas);
+                const sprite = new THREE.Sprite(
+                    new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false })
+                );
+                sprite.scale.set(20, 2.6, 1);
+                sprite.isPhrase = true;
+                return sprite;
+            }
+
+            const phraseCount = Math.max(phrases.length * 6, 180);
+            const arms = 5;
+            const radius = 82;
+            const maxH = 22;
+
+            for (let i = 0; i < phraseCount; i++) {
+                const text = phrases[i % phrases.length];
+                const label = createLabel(text);
+                
+                const perArm = phraseCount / arms;
+                const ang = (i % perArm) * (Math.PI * 2 / perArm);
+                const armAng = Math.floor(i / perArm) * (Math.PI * 2 / arms);
+                const dist = Math.pow(i / phraseCount, 0.72) * radius;
+                const thickness = Math.pow(1 - (dist / radius), 2);
+                
+                const x = Math.cos(ang + armAng) * dist;
+                const z = Math.sin(ang + armAng) * dist;
+                const y = (Math.random() - 0.5) * maxH * thickness * 0.9;
+                
+                label.position.set(x, y, z);
+                galaxy.add(label);
+            }
+
+            // Estrellas de la galaxia (sutiles)
+            const starCount = 8000;
+            const geom = new THREE.BufferGeometry();
+            const pos = new Float32Array(starCount * 3);
+            
+            for (let i = 0; i < starCount; i++) {
+                const ang = Math.random() * Math.PI * 2;
+                const dist = Math.random() * radius * 1.15;
+                const y = (Math.random() - 0.5) * 36 * Math.pow(1 - Math.min(dist, radius) / radius, 1.5);
+                pos[i * 3] = Math.cos(ang) * dist;
+                pos[i * 3 + 1] = y;
+                pos[i * 3 + 2] = Math.sin(ang) * dist;
+            }
+            
+            geom.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+            galaxy.add(new THREE.Points(geom, new THREE.PointsMaterial({
+                color: 0xffffff,
+                size: 0.28,
+                transparent: true,
+                opacity: 0.65,
+                blending: THREE.AdditiveBlending
+            })));
+        }
+
+        function createGalaxyCore() {
+            const coreR = 12;
+            
+            // Textura del núcleo mejorada
+            const coreTexCanvas = document.createElement('canvas');
+            coreTexCanvas.width = coreTexCanvas.height = 256;
+            const cg = coreTexCanvas.getContext('2d');
+            const grd = cg.createRadialGradient(128, 128, 10, 128, 128, 128);
+            grd.addColorStop(0, '#140018');
+            grd.addColorStop(0.6, '#090012');
+            grd.addColorStop(1, '#000');
+            cg.fillStyle = grd;
+            cg.arc(128, 128, 128, 0, Math.PI * 2);
+            cg.fill();
+            
+            const core = new THREE.Mesh(
+                new THREE.SphereGeometry(coreR, 64, 64),
+                new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(coreTexCanvas) })
+            );
+            core.renderOrder = 1;
+            scene.add(core);
+
+            // Anillo de fotones
+            const photonRing = new THREE.Mesh(
+                new THREE.RingGeometry(coreR * 1.05, coreR * 1.18, 128),
+                new THREE.MeshBasicMaterial({
+                    color: 0xEAAEFF,
+                    transparent: true,
+                    opacity: 0.95,
+                    side: THREE.DoubleSide
+                })
+            );
+            photonRing.rotation.x = -Math.PI / 2;
+            photonRing.renderOrder = 0.5;
+            scene.add(photonRing);
+
+            // Halo extendido más brillante
+            function makeHaloTexture(size = 1024, inner = 0.45) {
+                const c = document.createElement('canvas');
+                c.width = c.height = size;
+                const g = c.getContext('2d');
+                const r = size / 2;
+                const grd = g.createRadialGradient(r, r, r * inner, r, r, r);
+                grd.addColorStop(0.0, 'rgba(255,200,240,0.45)');
+                grd.addColorStop(0.35, 'rgba(220,180,255,0.35)');
+                grd.addColorStop(0.7, 'rgba(160,200,255,0.28)');
+                grd.addColorStop(1, 'rgba(0,0,0,0)');
+                g.fillStyle = grd;
+                g.fillRect(0, 0, size, size);
+                return new THREE.CanvasTexture(c);
+            }
+            
+            const haloPlane = new THREE.Mesh(
+                new THREE.PlaneGeometry(320, 320),
+                new THREE.MeshBasicMaterial({
+                    map: makeHaloTexture(1024, 0.45),
+                    transparent: true,
+                    depthWrite: false,
+                    blending: THREE.AdditiveBlending,
+                    opacity: 0.9
+                })
+            );
+            haloPlane.rotation.x = -Math.PI / 2;
+            haloPlane.renderOrder = 0.2;
+            scene.add(haloPlane);
+
+            scene.userData.core = core;
+            scene.userData.photonRing = photonRing;
+            scene.userData.haloPlane = haloPlane;
+        }
+
+        function createCenterHeart() {
+            const heartGeo = new THREE.BufferGeometry();
+            const heartPos = [];
+
+            for (let i = 0; i < 10000; i++) {
+                const u = Math.random() * Math.PI * 2;
+                const v = Math.random() * Math.PI;
+                
+                const x = 16 * Math.pow(Math.sin(u), 3) * Math.sin(v) * 0.5;
+                const y = (13 * Math.cos(u) - 5 * Math.cos(2*u) - 2 * Math.cos(3*u) - Math.cos(4*u)) * Math.sin(v) * 0.5;
+                const z = 12 * Math.cos(v) * Math.sin(u) * 0.5;
+                
+                heartPos.push(x, y + 20, z);
+            }
+
+            heartGeo.setAttribute('position', new THREE.Float32BufferAttribute(heartPos, 3));
+            
+            heartParticles = new THREE.Points(heartGeo, new THREE.PointsMaterial({
+                size: 0.3,
+                color: 0xff10f0,
+                blending: THREE.AdditiveBlending,
+                transparent: true,
+                opacity: 0.9
+            }));
+
+            heartParticles.rotation.y = Math.PI;
+            scene.add(heartParticles);
+        }
+
+        function createPhotos() {
+            const loader = new THREE.TextureLoader();
+            const orbitRadius = 50;
+
+            fotosConRecuerdos.forEach((foto, i) => {
+                loader.load(
+                    foto.src,
+                    (texture) => {
+                        const aspect = texture.image.width / texture.image.height;
+                        const width = 18;
+                        const height = width / aspect;
+
+                        const geometry = new THREE.PlaneGeometry(width, height);
+                        const material = new THREE.MeshBasicMaterial({
+                            map: texture,
+                            side: THREE.DoubleSide
+                        });
+                        const mesh = new THREE.Mesh(geometry, material);
+
+                        const angle = (i / fotosConRecuerdos.length) * Math.PI * 2;
+                        const distance = orbitRadius + (i % 3) * 15;
+                        
+                        mesh.position.set(
+                            Math.cos(angle) * distance,
+                            15 + (i % 4) * 8,
+                            Math.sin(angle) * distance
+                        );
+
+                        mesh.userData.orbitAngle = angle;
+                        mesh.userData.orbitRadius = distance;
+                        mesh.userData.isPhoto = true;
+                        mesh.userData.photoIndex = i;
+                        mesh.userData.caption = foto.caption;
+
+                        const edgesGeo = new THREE.EdgesGeometry(geometry);
+                        const edgesMat = new THREE.LineBasicMaterial({ color: 0xff10f0 });
+                        const edges = new THREE.LineSegments(edgesGeo, edgesMat);
+                        mesh.add(edges);
+
+                        galaxy.add(mesh);
+                        photoMeshes.push(mesh);
+                    },
+                    undefined,
+                    (err) => console.log('Error cargando foto:', foto.src, err)
+                );
+            });
+        }
+
+        function onCanvasClick(event) {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(photoMeshes);
+
+            if (intersects.length > 0) {
+                const photo = intersects[0].object;
+                openPhotoModal(photo.userData.photoIndex);
+                spawnHearts(event.clientX, event.clientY, 30);
+            }
+        }
+
+        function onMouseMove(event) {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(photoMeshes);
+
+            const tooltip = document.getElementById('photoTooltip');
+            
+            if (intersects.length > 0) {
+                tooltip.style.display = 'block';
+                tooltip.style.left = event.clientX + 15 + 'px';
+                tooltip.style.top = event.clientY + 15 + 'px';
+                tooltip.textContent = intersects[0].object.userData.caption;
+                document.body.style.cursor = 'pointer';
+            } else {
+                tooltip.style.display = 'none';
+                document.body.style.cursor = 'default';
+            }
+        }
+
+        function openPhotoModal(index) {
+            const modal = document.getElementById('photoModal');
+            const img = document.getElementById('modalImage');
+            const caption = document.getElementById('modalCaption');
+
+            img.src = fotosConRecuerdos[index].src;
+            caption.textContent = fotosConRecuerdos[index].caption;
+            modal.classList.add('active');
+        }
+
+        function closePhotoModal() {
+            document.getElementById('photoModal').classList.remove('active');
+        }
+
+        function initMinimap() {
+            const canvas = document.getElementById('minimap-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 150;
+            canvas.height = 150;
+
+            function drawMinimap() {
+                ctx.clearRect(0, 0, 150, 150);
+                
+                ctx.fillStyle = 'rgba(255, 16, 240, 0.1)';
+                ctx.fillRect(0, 0, 150, 150);
+
+                ctx.beginPath();
+                ctx.arc(75, 75, 5, 0, Math.PI * 2);
+                ctx.fillStyle = '#ff10f0';
+                ctx.fill();
+
+                photoMeshes.forEach(mesh => {
+                    const scale = 0.5;
+                    const x = 75 + mesh.position.x * scale;
+                    const y = 75 + mesh.position.z * scale;
+                    
+                    ctx.beginPath();
+                    ctx.arc(x, y, 2, 0, Math.PI * 2);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fill();
+                });
+
+                if (camera) {
+                    const camX = 75 + camera.position.x * 0.3;
+                    const camY = 75 + camera.position.z * 0.3;
+                    ctx.beginPath();
+                    ctx.arc(camX, camY, 3, 0, Math.PI * 2);
+                    ctx.fillStyle = '#ffff00';
+                    ctx.fill();
+                }
+
+                requestAnimationFrame(drawMinimap);
+            }
+
+            drawMinimap();
+        }
+
+        let twinkle = 0;
+        function animateGalaxy() {
+            requestAnimationFrame(animateGalaxy);
+            const t = performance.now() * 0.001;
+            const dt = 1/60;
+
+            if (!galaxy) return;
+
+            // Animación sutil del campo de estrellas
+            twinkle = (twinkle + 0.0003) % 1;
+            if (scene.userData.starTexture) {
+                scene.userData.starTexture.offset.set(twinkle, 0);
+            }
+
+            galaxy.rotation.y = t * 0.05;
+
+            photoMeshes.forEach((mesh, i) => {
+                mesh.userData.orbitAngle += 0.002;
+                const angle = mesh.userData.orbitAngle;
+                const radius = mesh.userData.orbitRadius;
+
+                mesh.position.x = Math.cos(angle) * radius;
+                mesh.position.z = Math.sin(angle) * radius;
+                mesh.position.y = 15 + (i % 4) * 8 + Math.sin(angle * 2 + i) * 2;
+
+                mesh.lookAt(camera.position);
+            });
+
+            heartParticles.rotation.y += 0.01;
+            const scale = 1.2 + Math.sin(t * 3) * 0.15;
+            heartParticles.scale.set(scale, scale, scale);
+
+            if (scene.userData.core) {
+                scene.userData.core.rotation.y = t * 0.12;
+                const coreScale = 1 + Math.sin(t * 2) * 0.1;
+                scene.userData.core.scale.set(coreScale, coreScale, coreScale);
+            }
+
+            if (scene.userData.photonRing) {
+                scene.userData.photonRing.rotation.z = t * 0.18;
+            }
+
+            if (scene.userData.haloPlane) {
+                scene.userData.haloPlane.rotation.z = t * 0.02;
+            }
+
+            // Animar fuegos artificiales
+            for (let i = fireworksParticles.length - 1; i >= 0; i--) {
+                const particle = fireworksParticles[i];
+                
+                // Aplicar velocidad y gravedad
+                particle.position.add(particle.userData.velocity.clone().multiplyScalar(dt));
+                particle.userData.velocity.y += particle.userData.gravity * dt;
+                
+                // Fade out
+                particle.userData.life -= dt * 0.6;
+                particle.material.opacity = particle.userData.life;
+                
+                // Rotar para efecto visual
+                particle.rotation.z += dt * 3;
+                
+                // Eliminar si terminó su vida
+                if (particle.userData.life <= 0) {
+                    scene.remove(particle);
+                    fireworksParticles.splice(i, 1);
+                }
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // ====== CORAZONES 2D ======
+        const fxCanvas = document.getElementById('fx');
+        const fxCtx = fxCanvas.getContext('2d');
+        const hearts2D = [];
+        const DPR = Math.min(2, window.devicePixelRatio || 1);
+
+        function resizeFx() {
+            fxCanvas.width = Math.floor(innerWidth * DPR);
+            fxCanvas.height = Math.floor(innerHeight * DPR);
+            fxCanvas.style.width = innerWidth + 'px';
+            fxCanvas.style.height = innerHeight + 'px';
+        }
+        window.addEventListener('resize', resizeFx);
+        resizeFx();
+
+        function spawnHearts(x, y, count) {
+            x *= DPR;
+            y *= DPR;
+            for (let i = 0; i < count; i++) {
+                const a = Math.random() * Math.PI * 2;
+                hearts2D.push({
+                    x, y,
+                    vx: Math.cos(a) * (0.6 + Math.random() * 0.8),
+                    vy: -(0.8 + Math.random() * 1.2),
+                    life: 1,
+                    size: 10 + Math.random() * 16
+                });
+            }
+        }
+
+        function drawHeart2D(x, y, size) {
+            const s = size;
+            fxCtx.save();
+            fxCtx.translate(x, y);
+            fxCtx.beginPath();
+            fxCtx.moveTo(0, -0.25 * s);
+            fxCtx.bezierCurveTo(0.5 * s, -0.9 * s, 1.4 * s, -0.1 * s, 0, 0.9 * s);
+            fxCtx.bezierCurveTo(-1.4 * s, -0.1 * s, -0.5 * s, -0.9 * s, 0, -0.25 * s);
+            const g = fxCtx.createRadialGradient(0, 0, 0, 0, 0, s);
+            g.addColorStop(0, 'rgba(255,190,220,.95)');
+            g.addColorStop(1, 'rgba(255,90,160,0)');
+            fxCtx.fillStyle = g;
+            fxCtx.fill();
+            fxCtx.restore();
+        }
+
+        function animateHearts() {
+            fxCtx.clearRect(0, 0, fxCanvas.width, fxCanvas.height);
+            
+            for (let i = hearts2D.length - 1; i >= 0; i--) {
+                const h = hearts2D[i];
+                h.x += h.vx;
+                h.y += h.vy;
+                h.vy -= 0.02;
+                h.life -= 0.015;
+                
+                fxCtx.globalAlpha = Math.max(0, h.life);
+                drawHeart2D(h.x, h.y, h.size);
+                fxCtx.globalAlpha = 1;
+                
+                if (h.life <= 0 || h.y > fxCanvas.height) {
+                    hearts2D.splice(i, 1);
+                }
+            }
+            
+            requestAnimationFrame(animateHearts);
+        }
+
+        // Doble click/tap para corazones
+        let lastTap = 0;
+        addEventListener('click', (e) => {
+            const now = performance.now();
+            if (now - lastTap < 320) {
+                spawnHearts(e.clientX, e.clientY, 20);
+            }
+            lastTap = now;
+        }, { passive: true });
+
+        addEventListener('touchend', (e) => {
+            const now = performance.now();
+            const t = e.changedTouches && e.changedTouches[0];
+            if (now - lastTap < 320 && t) {
+                spawnHearts(t.clientX, t.clientY, 20);
+            }
+            lastTap = now;
+        }, { passive: true });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closePhotoModal();
+            }
+        });
+
+        // ====== RESPONSIVE ======
+        window.addEventListener('resize', () => {
+            starsCanvas.width = window.innerWidth;
+            starsCanvas.height = window.innerHeight;
+            textCanvas.width = window.innerWidth;
+            textCanvas.height = window.innerHeight;
+            
+            centerX = window.innerWidth <= 640 ? window.innerWidth * 0.7 : window.innerWidth * 0.75;
+            centerY = window.innerWidth <= 640 ? window.innerHeight * 0.35 : window.innerHeight * 0.4;
+            updateHeartPositions();
+            initTextParticles();
+            
+            if (camera && renderer) {
+                const isMobile = window.innerWidth < 768 || window.innerWidth < window.innerHeight;
+                camera.fov = isMobile ? 90 : 75;
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+        });
+
+        animateHearts();
+    </script>
+</body>
+</html>
